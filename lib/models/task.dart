@@ -24,10 +24,12 @@ class Task {
 
   // Create Task from JSON
   factory Task.fromJson(Map<String, dynamic> json) => Task(
-        id: json['id'],
-        title: json['title'],
-        description: json['description'],
-        tags: List<String>.from(json['tags'] ?? []),
-        isCompleted: json['isCompleted'] ?? false,
+        id: json['id'].toString(), // Convert id to a string
+        title: json['title'] ?? '',
+        description: json['description'] ?? '',
+        tags: json['tags'] != null
+            ? List<String>.from(json['tags'].split(',').map((e) => e.trim()))
+            : [],
+        isCompleted: json['isCompleted'] == 1 || json['isCompleted'] == true,
       );
 }

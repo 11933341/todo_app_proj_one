@@ -45,11 +45,12 @@ class TaskController {
 
   // Toggle task completion
   Future<bool> toggleTaskCompletion(String id) async {
-    final task = _taskList.firstWhere((task) => task.id == id);
-    final success = await _apiService.updateTaskCompletion(id, !task.isCompleted);
+    final task = _taskList.firstWhere((task) => task.id == id); // Find the task by ID
+    final success = await _apiService.updateTaskCompletion(id, !task.isCompleted); // Toggle on the server
     if (success) {
-      await fetchTasks(); // Reload tasks from the server
+      task.isCompleted = !task.isCompleted; // Update locally
     }
     return success;
   }
+
 }

@@ -24,11 +24,11 @@ class TaskManager extends StatefulWidget {
   _TaskManagerState createState() => _TaskManagerState();
 }
 
-
-
 class _TaskManagerState extends State<TaskManager> {
-  final TaskController taskManager = TaskController(); // Create TaskManager instance
+  final TaskController taskManager =
+      TaskController(); // Create TaskManager instance
   List<Task> taskList = []; // Holds the list of tasks
+  bool isLoading = false; // Track loading state
 
   @override
   void initState() {
@@ -38,15 +38,25 @@ class _TaskManagerState extends State<TaskManager> {
 
   // Fetch tasks and update the state
   void _loadTasks() async {
-    await taskManager.fetchTasks(); // Fetch from server
+    setState(() => isLoading = true); // Start loading
+    await taskManager.fetchTasks(); // Fetch tasks from server
     setState(() {
-      taskList = taskManager.taskList; // Update local list
+      taskList = taskManager.taskList; // Update UI with fetched tasks
+      isLoading = false; // Stop loading
     });
   }
 
   // Add a new task
   void _addTask(Task task) async {
+    setState(() => isLoading = true); // Show loading indicator
     final success = await taskManager.addTask(task);
+    setState(() => isLoading = false); // Stop loading indicator
+
+    final message = success ? 'Task added successfully!' : 'Failed to add task';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
     if (success) {
       _loadTasks(); // Reload tasks after adding
     }
@@ -54,17 +64,39 @@ class _TaskManagerState extends State<TaskManager> {
 
   // Toggle task completion
   void _toggleTaskCompletion(String id) async {
-    final success = await taskManager.toggleTaskCompletion(id);
+    setState(() => isLoading = true); // Start the loading indicator
+    final success = await taskManager.toggleTaskCompletion(id); // Toggle the completion
+    setState(() => isLoading = false); // Stop the loading indicator
+
+    // Show a snackbar to notify the user
+    final message = success ? 'Task updated successfully!' : 'Failed to update task';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
     if (success) {
-      _loadTasks(); // Reload tasks after toggling
+      setState(() {
+        taskList = taskManager.taskList; // Update the local task list
+        print('Updated Task List: $taskList'); // Log for debugging
+      });
     }
   }
 
+
   // Delete a task
   void _deleteTask(String id) async {
+    setState(() => isLoading = true);
     final success = await taskManager.removeTask(id);
+    setState(() => isLoading = false);
+
+    final message =
+        success ? 'Task deleted successfully!' : 'Failed to delete task';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
     if (success) {
-      _loadTasks(); // Reload tasks after deleting
+      _loadTasks();
     }
   }
 
@@ -72,11 +104,14 @@ class _TaskManagerState extends State<TaskManager> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Task Manager')),
-      body: TaskListScreen(
-        taskList: taskList,
-        onDeleteTask: _deleteTask,
-        onToggleTaskCompletion: _toggleTaskCompletion,
-      ),
+      body: isLoading
+          ? Center(
+              child: CircularProgressIndicator()) // Show spinner while loading
+          : TaskListScreen(
+              taskList: taskList,
+              onDeleteTask: _deleteTask,
+              onToggleTaskCompletion: _toggleTaskCompletion,
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -95,9 +130,6 @@ class _TaskManagerState extends State<TaskManager> {
     );
   }
 }
-
-
-
 
 class AddTaskScreen extends StatelessWidget {
   final Function(Task) onAddTask;
@@ -153,6 +185,3 @@ class AddTaskScreen extends StatelessWidget {
     );
   }
 }
-
-
-

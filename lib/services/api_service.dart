@@ -44,21 +44,28 @@ class ApiService {
 
   // Update task completion status
   Future<bool> updateTaskCompletion(String id, bool isCompleted) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/update_task.php'),
-      body: {
-        'id': id,
-        'is_completed': isCompleted ? '1' : '0',
-      },
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/update_task.php'),
+        body: {
+          'id': id,
+          'is_completed': isCompleted ? '1' : '0', // Send completion status
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final result = json.decode(response.body);
-      return result['success'];
-    } else {
-      throw Exception('Failed to update task');
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        return result['success']; // Check for success
+      } else {
+        print('Server error: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating task: $e');
+      return false;
     }
   }
+
 
   // Delete a task
   Future<bool> deleteTask(String id) async {

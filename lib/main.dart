@@ -1,111 +1,158 @@
 import 'package:flutter/material.dart';
+import 'models/task.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert' as convert;
+import 'state/task_manager.dart';
+import 'widgets/task_list.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'To-Do App 1',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const HomePage(title: 'To-Do App 2'),
+      title: 'To-Do App',
+      home: TaskManager(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.title});
-
-  final String title;
-
+class TaskManager extends StatefulWidget {
   @override
-  State<HomePage> createState() => _HomePageState();
+  _TaskManagerState createState() => _TaskManagerState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final List<String> _tasks = []; // List to store tasks
-  final TextEditingController _taskController = TextEditingController();
 
-  void _addTask() {
+
+class _TaskManagerState extends State<TaskManager> {
+  final TaskController taskManager = TaskController(); // Create TaskManager instance
+  List<Task> taskList = []; // Holds the list of tasks
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks(); // Load tasks when the app starts
+  }
+
+  // Fetch tasks and update the state
+  void _loadTasks() async {
+    await taskManager.fetchTasks(); // Fetch from server
     setState(() {
-      if (_taskController.text.isNotEmpty) {
-        setState(() {
-          _tasks.add(_taskController.text);
-        });
-        _taskController.clear();
-        Navigator.of(context).pop();
-      }
-
+      taskList = taskManager.taskList; // Update local list
     });
   }
 
-  void _deleteTask(int index) {
-    setState(() {
-      _tasks.removeAt(index);
-    });
+  // Add a new task
+  void _addTask(Task task) async {
+    final success = await taskManager.addTask(task);
+    if (success) {
+      _loadTasks(); // Reload tasks after adding
+    }
+  }
+
+  // Toggle task completion
+  void _toggleTaskCompletion(String id) async {
+    final success = await taskManager.toggleTaskCompletion(id);
+    if (success) {
+      _loadTasks(); // Reload tasks after toggling
+    }
+  }
+
+  // Delete a task
+  void _deleteTask(String id) async {
+    final success = await taskManager.removeTask(id);
+    if (success) {
+      _loadTasks(); // Reload tasks after deleting
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('To-do App 3'),
+      appBar: AppBar(title: Text('Task Manager')),
+      body: TaskListScreen(
+        taskList: taskList,
+        onDeleteTask: _deleteTask,
+        onToggleTaskCompletion: _toggleTaskCompletion,
       ),
-      body: _tasks.isEmpty
-          ? Center(
-              child: Text(
-                'No tasks yet. Add one!',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            )
-          : ListView.builder(
-              itemCount: _tasks.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(_tasks[index]),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.delete,
-                      color: Colors.red,
-                    ),
-                    onPressed: () => _deleteTask(index),
-                  ),
-                );
-              },
-            ),
       floatingActionButton: FloatingActionButton(
-          onPressed: () => {
-                showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Add Task'),
-                        content: TextField(
-                          controller: _taskController,
-                          decoration:
-                              InputDecoration(hintText: 'Enter task name'),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('cancel'),
-                          ),
-                          TextButton(onPressed: _addTask, child: Text('Add'))
-                        ],
-                      );
-                    })
-              },
-              child: Icon(Icons.add),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddTaskScreen(
+                onAddTask: (task) {
+                  _addTask(task); // Add the task
+                },
               ),
+            ),
+          );
+        },
+        child: Icon(Icons.add),
+      ),
     );
   }
 }
+
+
+
+
+class AddTaskScreen extends StatelessWidget {
+  final Function(Task) onAddTask;
+
+  AddTaskScreen({required this.onAddTask});
+
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _tagsController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Add Task'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(labelText: 'Task Title'),
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: InputDecoration(labelText: 'Description'),
+            ),
+            TextField(
+              controller: _tagsController,
+              decoration: InputDecoration(labelText: 'Tags (comma-separated)'),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                final newTask = Task(
+                  id: DateTime.now().toString(),
+                  title: _titleController.text,
+                  description: _descriptionController.text,
+                  tags: _tagsController.text
+                      .split(',')
+                      .map((e) => e.trim())
+                      .toList(),
+                );
+                onAddTask(newTask); // Add the task
+                Navigator.pop(context); // Return to task list
+              },
+              child: Text('Add Task'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
